@@ -1,0 +1,1 @@
+//# sourceMappingURL=russian_sqaure.d.ts.map

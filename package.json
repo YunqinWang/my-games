@@ -1,0 +1,49 @@
+{
+	"name": "mywebsite",
+	"version": "1.0.0",
+	"description": "",
+	"main": "index.js",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1",
+		"build": "webpack",
+		"predeploy": "webpack",
+		"deploy": "gh-pages -d dist"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/YunqinWang/mywebsite.git"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"bugs": {
+		"url": "https://github.com/YunqinWang/mywebsite/issues"
+	},
+	"homepage": "https://YunqinWang.github.io/mywebsite",
+	"devDependencies": {
+		"@emotion/react": "^11.14.0",
+		"@emotion/styled": "^11.14.0",
+		"@mui/material": "^7.0.2",
+		"@types/d3": "^7.4.3",
+		"@types/lodash": "^4.17.16",
+		"@types/react": "^19.1.2",
+		"@types/react-dom": "^19.1.2",
+		"css-loader": "^7.1.2",
+		"file-loader": "^6.2.0",
+		"gh-pages": "^6.3.0",
+		"mini-css-extract-plugin": "^2.9.2",
+		"react": "^19.1.0",
+		"sass": "^1.87.0",
+		"sass-loader": "^16.0.5",
+		"style-loader": "^4.0.0",
+		"ts-loader": "^9.5.2",
+		"typescript": "^5.8.3",
+		"webpack": "^5.99.7",
+		"webpack-cli": "^6.0.1"
+	},
+	"dependencies": {
+		"bootstrap": "^5.3.5",
+		"d3": "^7.9.0",
+		"lodash": "^4.17.21"
+	}
+}

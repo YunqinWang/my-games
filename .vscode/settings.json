@@ -1,0 +1,20 @@
+{
+	"emeraldwalk.runonsave": {
+		"autoClearConsole": true,
+		"commands": [
+			// {
+			// 	"match": "[\\\\/]src[\\\\/]script[\\\\/?](?:.*)+[^\\\\/]+(\\.tsx$|\\.ts$|\\.jsx$|\\.js$)|tsconfig.json",
+			// 	"cmd": "npx tsc --project tsconfig.json"
+			// },
+			{
+				"match": "[\\\\/]src[\\\\/]script[\\\\/?](?:.*)+[^\\\\/]+(\\.tsx$|\\.ts$|\\.jsx$|\\.js$|.json$)|[\\\\/]src[\\\\/]style[\\\\/][^\\\\/]+(\\.css$|.scss$)|tsconfig.json|webpack\\..+\\.js",
+				"cmd": "npx webpack build --config ./webpack.config.js --mode=development"
+			}
+		]
+	},
+	"editor.defaultFormatter": "esbenp.prettier-vscode",
+	"[javascript]": {
+		"editor.defaultFormatter": "esbenp.prettier-vscode"
+	},
+	"editor.formatOnSave": true
+}
