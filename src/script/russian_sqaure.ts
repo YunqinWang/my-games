@@ -1,6 +1,95 @@
 import * as d3 from "d3";
 import "../css/russian_square.scss";
-class RussianSquare {
+import { random, String } from "lodash";
+
+class RussianSquareBlock {
+	row = 0;
+	col = 0;
+	static allBlocks: Map<number, RussianSquareBlock> = new Map();
+
+	fillBlock: number[][];
+	bottom: number[];
+	block: number[][];
+	frequency: number;
+	color = "#000";
+
+	id: number;
+	constructor(
+		fillBlock: number[][],
+		frequency: number = 0.5, // [0,1]
+		id: number | undefined = undefined
+	) {
+		this.fillBlock = fillBlock;
+
+		fillBlock.forEach((f) => {
+			if (f[1] + 1 > this.col) this.col = f[1] + 1;
+			if (f[0] + 1 > this.row) this.row = f[0] + 1;
+		});
+		this.block = Array.from({ length: this.row }, () =>
+			Array(this.col).fill(0)
+		);
+		this.bottom = Array(this.col).fill(0);
+
+		fillBlock.forEach((f) => {
+			this.block[f[0]][f[1]] = 1;
+			let curBottom = this.bottom[f[1]];
+			if (curBottom < f[0] + 1) {
+				this.bottom[f[1]] = f[0] + 1;
+			}
+		});
+
+		this.frequency = frequency;
+
+		if (id == undefined) {
+			id = RussianSquareBlock.allBlocks.size;
+		}
+		RussianSquareBlock.allBlocks.set(id, this);
+		this.id = id;
+	}
+
+	logBlock() {
+		// this.block.forEach((_r, index) => {
+		// 	let r = _r.join("").replaceAll("0", " ");
+		// 	console.log([index, ...r].join(""));
+		// });
+
+		// let dashline = Array(RussianSquareBlock.col).fill("-");
+		// console.log(dashline.join(""));
+
+		// let gridH = dashline.map((_, i) => i);
+		// console.log(gridH.join(""));
+		console.log(this.block);
+		console.log("bottom", this.bottom);
+	}
+
+	static prepareBlocks() {
+		new RussianSquareBlock([
+			[0, 0],
+			[0, 1],
+			[0, 2],
+			[0, 3],
+		]);
+
+		new RussianSquareBlock([
+			[0, 0],
+			[0, 1],
+			[0, 2],
+			[1, 0],
+			[2, 0],
+			[3, 0],
+		]);
+	}
+
+	static getRandomBlock() {
+		let blockId = random(0, RussianSquareBlock.allBlocks.size - 1, false);
+		let block = RussianSquareBlock.allBlocks.get(blockId);
+		return block;
+	}
+}
+
+class RussianSquareGame {
+	divId: string;
+
 	svgId: string;
 	chartSvg: d3.Selection<d3.BaseType, unknown, HTMLElement, any>;
 	svgWidth = 300;
@@ -11,10 +100,17 @@ class RussianSquare {
 	mainHeight = this.svgHeight - this.margins.top - this.margins.bottom;
 	gridSize = 20;
 
-	constructor(svgId: string) {
+	col = this.mainWidth / this.gridSize;
+	row = this.mainHeight / this.gridSize;
+	floor = Array(this.col).fill(this.row + 1);
+
+	constructor(divId: string, svgId: string) {
+		this.divId = divId;
+
 		this.svgId = svgId;
 		this.chartSvg = this.createSvg();
 		this.drawSvgGrid();
+		this.appendButtons();
 	}
 
 	private createSvg() {
@@ -25,6 +121,15 @@ class RussianSquare {
 		return chartSvg;
 	}
 
+	private appendButtons() {
+		let div = d3.select(`#${this.divId}`);
+		div.append("button")
+			.text("Start!")
+			.on("click", async () => {
+				const iterator = this.startGame();
+			});
+	}
+
 	private drawSvgGrid() {
 		let mainChart = this.chartSvg
 			.append("g")
@@ -33,21 +138,20 @@ class RussianSquare {
 				`translate(${this.margins.left},${this.margins.top})`
 			);
 
-		mainChart
-			.append("rect")
+		const back = mainChart.append("g");
+		back.append("rect")
 			.attr("x", 0)
 			.attr("y", 0)
 			.attr("width", this.mainWidth)
 			.attr("height", this.mainHeight)
 			.attr("fill", "#D2D2D2");
 
-		let horizontalData = Array(this.mainHeight / this.gridSize)
+		let horizontalData = Array(this.row)
 			.fill(1)
 			.map((_, index) => {
 				return index * this.gridSize;
 			});
-		mainChart
-			.selectAll(".grid-line-h")
+		back.selectAll(".grid-line-h")
 			.data(horizontalData)
 			.join(function (enter) {
 				return enter.append("line").attr("stroke", "#fff");
@@ -56,14 +160,21 @@ class RussianSquare {
 			.attr("y1", (d) => d)
 			.attr("x2", this.mainWidth)
 			.attr("y2", (d) => d);
+		back.selectAll(".grid-line-h-text")
+			.data(Array(this.row + 1).fill(1))
+			.join(function (enter) {
+				return enter.append("text").text((d, i) => i);
+			})
+			.attr("font-size", "10px")
+			.attr("x", -10)
+			.attr("y", (d, i) => i * this.gridSize);
 
-		let verticalData = Array(this.mainWidth / this.gridSize)
+		let verticalData = Array(this.col)
 			.fill(1)
 			.map((_, index) => {
 				return index * this.gridSize;
 			});
-		mainChart
-			.selectAll(".grid-line-v")
+		back.selectAll(".grid-line-v")
 			.data(verticalData)
 			.join(function (enter) {
 				return enter.append("line").attr("stroke", "#fff");
@@ -72,9 +183,121 @@ class RussianSquare {
 			.attr("y1", 0)
 			.attr("x2", (d) => d)
 			.attr("y2", this.mainHeight);
+
+		mainChart.append("g").attr("id", "blockG");
+	}
+
+	private maxBlocks = 2;
+	private dropTime = 200;
+	async startGame() {
+		console.log("startGame");
+
+		let game = this;
+		let g = this.chartSvg.select("#blockG");
+		let endGame = false;
+
+		let blockCount = 0;
+
+		while (!endGame && blockCount <= this.maxBlocks) {
+			console.log("==blockCount==", blockCount);
+			blockCount += 1;
+
+			let block = RussianSquareBlock.getRandomBlock();
+			if (block == undefined) return;
+			block.logBlock();
+
+			let { leftCol, moveToRow, ymove } = this.getBlockPosition(block);
+
+			let tmpBlocks = [...block.fillBlock];
+			while (ymove + block.row != moveToRow + 1) {
+				ymove += 1;
+				const t = g.transition().duration(this.dropTime);
+				const blockUpdate = g
+					.selectAll(".moving-block")
+					.data(tmpBlocks)
+					.call((update) =>
+						update
+							.transition(t)
+							.attr(
+								"transform",
+								`translate(${leftCol * this.gridSize},${
+									ymove * this.gridSize
+								})`
+							)
+					);
+
+				const blockEnter = blockUpdate
+					.enter()
+					.append("rect")
+					.attr("fill", "green")
+					.attr("class", "moving-block")
+					.attr("x", (d) => d[1] * game.gridSize)
+					.attr("y", (d) => d[0] * game.gridSize)
+					.attr("width", (d) => game.gridSize)
+					.attr("height", (d) => game.gridSize)
+					.call((enter) =>
+						enter.attr(
+							"transform",
+							`translate(${leftCol * this.gridSize},${
+								ymove * this.gridSize
+							})`
+						)
+					);
+
+				const blockExit = blockUpdate
+					.exit()
+					.attr("fill", "brown")
+					.call((exit) => exit.attr("class", "settled-block"));
+
+				if (ymove + block.row == moveToRow) {
+					tmpBlocks = [];
+					console.log("==landed==");
+				}
+				await new Promise((resolve) =>
+					setTimeout(resolve, this.dropTime)
+				);
+			}
+
+			if (moveToRow - block.row < 0) {
+				endGame = true;
+			}
+		}
+	}
+
+	getBlockPosition(block: RussianSquareBlock) {
+		let leftCol = random(0, block.col, false);
+		let floorSec = this.floor.slice(leftCol, leftCol + block.col);
+
+		//which col contacts
+		let maxSum = 0;
+		let contactCol = -1;
+		for (let i = 0; i < block.col; i++) {
+			let floor = floorSec[i];
+			let blockBottom = block.bottom[i];
+			let s = floor + blockBottom;
+			if (s >= maxSum) {
+				maxSum = s;
+				contactCol = i;
+			}
+		}
+		let moveToRow = floorSec[contactCol] - 1;
+
+		// console.log("leftCol", leftCol);
+		// console.log("moveToRow", moveToRow);
+		// console.log("block.row", block.row);
+
+		return {
+			leftCol: leftCol,
+			moveToRow: moveToRow,
+			ymove: -block.row,
+		};
 	}
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-	let game = new RussianSquare("russian_sqaure_svg");
+	RussianSquareBlock.prepareBlocks();
+	let game = new RussianSquareGame(
+		"russian_sqaure_div",
+		"russian_sqaure_svg"
+	);
 });
