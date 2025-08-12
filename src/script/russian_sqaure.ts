@@ -8,6 +8,7 @@ class RussianSquareBlock {
 	static allBlocks: Map<number, RussianSquareBlock> = new Map();
 
 	fillBlock: number[][];
+	top: number[];
 	bottom: number[];
 	block: number[][];
 	frequency: number;
@@ -28,6 +29,7 @@ class RussianSquareBlock {
 		this.block = Array.from({ length: this.row }, () =>
 			Array(this.col).fill(0)
 		);
+		this.top = Array(this.col).fill(this.row + 1);
 		this.bottom = Array(this.col).fill(0);
 
 		fillBlock.forEach((f) => {
@@ -35,6 +37,10 @@ class RussianSquareBlock {
 			let curBottom = this.bottom[f[1]];
 			if (curBottom < f[0] + 1) {
 				this.bottom[f[1]] = f[0] + 1;
+			}
+			let curTop = this.top[f[1]];
+			if (curTop > f[0]) {
+				this.top[f[1]] = f[0];
 			}
 		});
 
@@ -78,12 +84,43 @@ class RussianSquareBlock {
 			[2, 0],
 			[3, 0],
 		]);
+
+		new RussianSquareBlock([
+			[0, 0],
+			[0, 1],
+			[1, 0],
+			[1, 1],
+		]);
+
+		new RussianSquareBlock([
+			[0, 1],
+			[1, 1],
+			[2, 0],
+			[2, 1],
+			[2, 2],
+		]);
 	}
 
 	static getRandomBlock() {
 		let blockId = random(0, RussianSquareBlock.allBlocks.size - 1, false);
 		let block = RussianSquareBlock.allBlocks.get(blockId);
 		return block;
+	}
+
+	findBlockBottomRow() {
+		// x
+		// x x x
+		// x
+		// bottom[3,2,2]
+		let bottomRow = -1;
+		let bottomCol = -1;
+		this.bottom.forEach((colBottom, i) => {
+			if (colBottom > bottomRow) {
+				bottomRow = colBottom;
+				bottomCol = i;
+			}
+		});
+		return [bottomRow, bottomCol];
 	}
 }
 
@@ -102,7 +139,9 @@ class RussianSquareGame {
 
 	col = this.mainWidth / this.gridSize;
 	row = this.mainHeight / this.gridSize;
-	floor = Array(this.col).fill(this.row + 1);
+	floor = Array(this.col).fill(this.row);
+
+	gameBoard = Array.from({ length: this.row }, () => Array(this.col).fill(0));
 
 	constructor(divId: string, svgId: string) {
 		this.divId = divId;
@@ -188,7 +227,7 @@ class RussianSquareGame {
 	}
 
 	private maxBlocks = 2;
-	private dropTime = 200;
+	private dropTime = 100;
 	async startGame() {
 		console.log("startGame");
 
@@ -251,6 +290,7 @@ class RussianSquareGame {
 
 				if (ymove + block.row == moveToRow) {
 					tmpBlocks = [];
+					this.addBlockToGameState(block, moveToRow, leftCol);
 					console.log("==landed==");
 				}
 				await new Promise((resolve) =>
@@ -269,28 +309,65 @@ class RussianSquareGame {
 		let floorSec = this.floor.slice(leftCol, leftCol + block.col);
 
 		//which col contacts
-		let maxSum = 0;
+		let minFloor = this.row;
 		let contactCol = -1;
+
+		console.log("floorSec", floorSec);
+		console.log("block.bottom", block.bottom);
+
 		for (let i = 0; i < block.col; i++) {
+			let success = true;
 			let floor = floorSec[i];
-			let blockBottom = block.bottom[i];
-			let s = floor + blockBottom;
-			if (s >= maxSum) {
-				maxSum = s;
+			let bottom = block.bottom[i];
+
+			for (let j = 0; j < block.col; j++) {
+				let f = floorSec[j];
+				let b = block.bottom[j];
+				if (f < floor - bottom + b) {
+					success = false;
+				}
+			}
+			console.log("i success", i, success);
+
+			if (success && minFloor >= floor) {
+				floor = minFloor;
 				contactCol = i;
 			}
 		}
-		let moveToRow = floorSec[contactCol] - 1;
 
-		// console.log("leftCol", leftCol);
-		// console.log("moveToRow", moveToRow);
-		// console.log("block.row", block.row);
+		let [bottomRow, bottomCol] = block.findBlockBottomRow();
+		console.log("bottomCol", bottomCol);
+		let moveToRow =
+			floorSec[contactCol] +
+			(block.bottom[bottomCol] - block.bottom[contactCol]);
+		console.log("leftCol", leftCol);
+		console.log("contactCol", contactCol);
+		console.log("moveToRow", moveToRow);
+		console.log("block.bottom", block.bottom);
+		console.log("block.top", block.top);
 
 		return {
 			leftCol: leftCol,
 			moveToRow: moveToRow,
 			ymove: -block.row,
+			contactCol: contactCol,
 		};
+	}
+
+	addBlockToGameState(
+		block: RussianSquareBlock,
+		bottomRow: number,
+		leftCol: number
+	) {
+		let delta = bottomRow - block.row;
+		block.fillBlock.forEach((fb) => {
+			this.gameBoard[delta + fb[0]][leftCol + fb[1]];
+		});
+
+		for (let i = leftCol; i < leftCol + block.col; i++) {
+			this.floor[i] = bottomRow - (block.row - block.top[i - leftCol]);
+		}
+		console.log("this.floor", this.floor);
 	}
 }
 
